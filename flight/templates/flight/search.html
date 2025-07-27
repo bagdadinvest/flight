@@ -8,6 +8,77 @@
     <link rel="stylesheet" href="{% static 'css/search2_style.css' %}">
     <!--<script src="{% static 'js/search.js' %}"></script>-->
     <script src="{% static 'js/search2.js' %}"></script>
+    
+    <!-- Enhanced styles for Amadeus flights -->
+    <style>
+        .amadeus-flight {
+            border-left: 4px solid #28a745 !important;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.05) 0%, rgba(40, 167, 69, 0.02) 100%);
+            position: relative;
+        }
+        
+        .amadeus-flight::before {
+            content: 'LIVE';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            z-index: 5;
+        }
+        
+        .amadeus-badge {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .amadeus-flight:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .amadeus-flight .flight-price h5 {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .amadeus-flight .btn-outline-primary {
+            border-color: #28a745;
+            color: #28a745;
+        }
+        
+        .amadeus-flight .btn-outline-primary:hover {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        
+        .search-toggle {
+            margin: 20px 0;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 10px;
+        }
+        
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+        }
+    </style>
 {% endblock %}
 
 {% block body %}
@@ -61,14 +132,14 @@
                 </div>
                 <div class="v-line"></div>
                 <div class="trip-modify">
-                    <form action="/" method="POST">
-                        {% csrf_token %}
+                    <form action="{% url 'unified_search' %}" method="GET">
                         <input type="hidden" name="Origin" value="{{origin.code|upper}}">
                         <input type="hidden" name="Destination" value="{{destination.code|upper}}">
                         <input type="hidden" name="DepartDate" value='{{depart_date|date:"Y-m-d"}}'>
                         <input type="hidden" name="ReturnDate" value='{{return_date|date:"Y-m-d"}}'>
                         <input type="hidden" name="SeatClass" value="{{seat|lower}}">
                         <input type="hidden" name="TripType" id="trip-identifier" value="{{trip_type}}">
+                        <input type="hidden" name="include_amadeus" value="true">
                         <button class="btn spl-btn" type="submit">Modify Search</button>
                     </form>
                 </div>
@@ -77,14 +148,14 @@
         <div class="query-data-div2">
             <div class="container">
                 <div class="trip-modify">
-                    <form action="/" method="POST">
-                        {% csrf_token %}
+                    <form action="{% url 'unified_search' %}" method="GET">
                         <input type="hidden" name="Origin" value="{{origin.code|upper}}">
                         <input type="hidden" name="Destination" value="{{destination.code|upper}}">
                         <input type="hidden" name="DepartDate" value='{{depart_date|date:"Y-m-d"}}'>
                         <input type="hidden" name="ReturnDate" value='{{return_date|date:"Y-m-d"}}'>
                         <input type="hidden" name="SeatClass" value="{{seat|lower}}">
                         <input type="hidden" name="TripType" value="{{trip_type}}">
+                        <input type="hidden" name="include_amadeus" value="true">
                         <button class="btn spl-btn2" type="submit">
                             <svg width="1.3em" height="1.3em" viewBox="0 0 16 16" class="bi bi-arrow-left" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                                 <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
@@ -162,7 +233,7 @@
         <div class="query-result-div">
             <div class="container">
                 <div class="row">
-                    {% if flights %}
+                    {% if flights or amadeus_flights %}
                         <div class="col-lg-3 filter-div">
                             <div class="close-filter" style="margin-top: 0;">
                                 <button class="btn b1" onclick="close_filter(this)">
@@ -424,6 +495,125 @@
                                     </div>
 
                                 {% endfor %}
+
+                                <!-- Amadeus Flights Section -->
+                                {% if amadeus_flights %}
+                                    {% if flights %}
+                                        <div style="border-top: 2px solid #e0e0e0; margin: 20px 0; padding-top: 20px;">
+                                            <h5 style="color: #007bff; margin-bottom: 15px;">
+                                                <svg width="1.2em" height="1.2em" viewBox="0 0 16 16" class="bi bi-globe" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
+                                                    <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5V1.077zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4H4.09zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.958 6.958 0 0 0-.656 2.5h2.49zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5H4.847zM8.5 5v2.5h2.99a12.495 12.495 0 0 0-.337-2.5H8.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5H4.51zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5H8.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12H5.145zm.182 2.472a6.696 6.696 0 0 1-.597-.933A9.268 9.268 0 0 1 4.09 12H2.255a7.024 7.024 0 0 0 3.072 2.472zM3.82 11a13.652 13.652 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5H3.82zm6.853 3.472A7.024 7.024 0 0 0 13.745 12H11.91a9.27 9.27 0 0 1-.64 1.539 6.688 6.688 0 0 1-.597.933zM8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068H8.5zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.65 13.65 0 0 1-.312 2.5zm2.802-3.5a6.959 6.959 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5h2.49zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.024 7.024 0 0 0-3.072-2.472c.218.284.418.598.597.933zM10.855 4a7.966 7.966 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4h2.355z"/>
+                                                </svg>
+                                                Live Flight Results (Amadeus API)
+                                            </h5>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% for flight in amadeus_flights %}
+                                        <div class="each-flight-div-box show amadeus-flight" data-amadeus-price="{{flight.price.total|default:0}}">
+                                            <div class="each-flight-div" onclick="media_click(this)">
+                                                <div class="flight-company">
+                                                    <div class="flight-icon">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false" width="1.5em" height="1.3em" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);" preserveAspectRatio="xMidYMid meet" viewBox="0 0 440 384"><path d="M14 335h405v43H14v-43zm417.5-199.5q3.5 12.5-3 24T409 175l-114 30l-92 25l-114 30l-34 10l-16-29l-39-67l31-9l42 33l106-28L91 17l41-11l147 137l113-30q13-4 24.5 3t15 19.5z" fill="#007bff"/><rect x="0" y="0" width="440" height="384" fill="rgba(0, 0, 0, 0)" /></svg>
+                                                    </div>
+                                                    <div class="company-details">
+                                                        <div class="company-name">
+                                                            {{flight.airline_name|default:"Unknown Airline"}}
+                                                            <span class="amadeus-badge">Live</span>
+                                                        </div>
+                                                        <div class="plane-name">
+                                                            {{flight.airline_code|default:"--"}}{{flight.flight_number|default:"--"}}
+                                                            {% if flight.aircraft %}
+                                                                | {{flight.aircraft}}
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flight-time flight-time-div">
+                                                    <div class="flight-origin-time">
+                                                        <div class="flight-time">
+                                                            {% if flight.departure_time %}
+                                                                {% load custom_filters %}
+                                                                <h5>{{flight.departure_time|parse_iso_time}}</h5>
+                                                            {% else %}
+                                                                <h5>--:--</h5>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="flight-place">
+                                                            {{flight.origin_code|default:"--"}}
+                                                            {% if flight.origin_terminal %}
+                                                                T{{flight.origin_terminal}}
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="flight-stops tooltip">
+                                                        {% if flight.is_direct %}
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="34" height="24" viewBox="0 0 24 24" fill="#28a745">
+                                                                <path d="M3,12 L21,12"/>
+                                                            </svg>
+                                                            <span class="tooltiptext">Direct</span>
+                                                        {% else %}
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="34" height="24" viewBox="0 0 24 24">
+                                                                <path d="M13,9.03544443 C14.6961471,9.27805926 16,10.736764 16,12.5 C16,14.263236 14.6961471,15.7219407 13,15.9645556 L13,21.5207973 C13,21.7969397 12.7761424,22.0207973 12.5,22.0207973 C12.2238576,22.0207973 12,21.7969397 12,21.5207973 L12,15.9645556 C10.3038529,15.7219407 9,14.263236 9,12.5 C9,10.736764 10.3038529,9.27805926 12,9.03544443 L12,3.5 C12,3.22385763 12.2238576,3 12.5,3 C12.7761424,3 13,3.22385763 13,3.5 L13,9.03544443 L13,9.03544443 Z M12.5,15 C13.8807119,15 15,13.8807119 15,12.5 C15,11.1192881 13.8807119,10 12.5,10 C11.1192881,10 10,11.1192881 10,12.5 C10,13.8807119 11.1192881,15 12.5,15 Z" transform="rotate(90 12.5 12.51)"/>
+                                                            </svg>
+                                                            <span class="tooltiptext">{{flight.stops}} stop{{flight.stops|pluralize}}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="flight-destination-time">
+                                                        <div class="flight-time">
+                                                            {% if flight.arrival_time %}
+                                                                <h5>{{flight.arrival_time|parse_iso_time}}</h5>
+                                                            {% else %}
+                                                                <h5>--:--</h5>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="flight-place">
+                                                            {{flight.destination_code|default:"--"}}
+                                                            {% if flight.destination_terminal %}
+                                                                T{{flight.destination_terminal}}
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flight-details">
+                                                    <div class="flight-price">
+                                                        <h5>
+                                                            {{flight.price.currency|default:"USD"}}
+                                                            <span>{{flight.price.total|floatformat:0|default:"N/A"}}</span>
+                                                        </h5>
+                                                        {% if flight.available_seats %}
+                                                            <small style="color: #666;">{{flight.available_seats}} seats left</small>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="flight-details-btn">
+                                                        {% if trip_type == '2' %}
+                                                            <input type="radio" class="flight1-radio r-b" name="test1" 
+                                                                   value="amadeus_{{flight.offer_id|default:flight.amadeus_id}}" 
+                                                                   data-plane='{{flight.airline_code}}{{flight.flight_number}}' 
+                                                                   data-depart='{{flight.departure_time|parse_iso_time}}' 
+                                                                   data-arrive='{{flight.arrival_time|parse_iso_time}}' 
+                                                                   data-fare="{{flight.price.total|default:0}}" 
+                                                                   data-type="amadeus"
+                                                                   data-offer-id="{{flight.offer_id}}"
+                                                                   data-amadeus-id="{{flight.amadeus_id}}">
+                                                        {% else %}
+                                                            <button class="btn btn-outline-primary" onclick="bookAmadeusFlight('{{flight.offer_id|default:flight.amadeus_id}}', '{{flight.price.total|default:0}}', '{{flight.price.currency|default:"USD"}}')">
+                                                                Book Live Flight
+                                                            </button>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+
+                                <!-- Display Amadeus Error if any -->
+                                {% if amadeus_error %}
+                                    <div class="alert alert-warning" style="margin: 20px 0;">
+                                        <strong>Live Flight Search Notice:</strong> {{amadeus_error}}
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
                     {% else %}
@@ -920,4 +1110,28 @@
             </div>
         {% endif %}
     </section>
+
+    <script>
+        // Function to handle Amadeus flight booking
+        function bookAmadeusFlight(flightId, price, currency) {
+            // For now, just show an alert - this would be extended to handle actual booking
+            alert(`Booking Amadeus flight ${flightId} for ${currency} ${price}. \n\nNote: Amadeus flight booking is not yet implemented in the review/booking system. This feature would require extending the booking flow to handle external flight data.`);
+            
+            // TODO: Implement actual Amadeus flight booking
+            // This would involve:
+            // 1. Storing Amadeus flight data temporarily
+            // 2. Extending the review/booking system to handle Amadeus flights
+            // 3. Creating a new booking flow for external flights
+        }
+
+        // Enhanced flight display functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add visual distinction for Amadeus flights
+            const amadeusFlights = document.querySelectorAll('.amadeus-flight');
+            amadeusFlights.forEach(flight => {
+                flight.style.borderLeft = '4px solid #007bff';
+                flight.style.backgroundColor = 'rgba(0, 123, 255, 0.05)';
+            });
+        });
+    </script>
 {% endblock %}

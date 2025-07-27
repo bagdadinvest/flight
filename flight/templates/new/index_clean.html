@@ -102,20 +102,8 @@
 				</div>
 			</div>
 			<div class="col-lg-6">
-				<form class="form" action="{% url 'unified_search' %}" method="POST" onsubmit="return flight_search()">
-					{% csrf_token %}
+				<form class="form" action="{% url 'flight' %}" onsubmit="return flight_search()">
 					<div class="align-items-center">
-						<!-- Enhanced Search Options -->
-						<div class="search-enhancement">
-							<div class="form-check">
-								<input class="form-check-input" type="checkbox" id="include_amadeus" name="include_amadeus" value="true" checked>
-								<label class="form-check-label" for="include_amadeus">
-									<strong>Include Live Flight Results (Amadeus API)</strong>
-									<small class="d-block text-muted">Get real-time flight data and pricing</small>
-								</label>
-							</div>
-						</div>
-						
 						<div class="search-flight-form-data">
 							<div class="input-row" style="display: flex;">
 								<div class="form-check-inline">
@@ -766,99 +754,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Perform Amadeus search
     async function performAmadeusSearch() {
-        console.log('=== AMADEUS SEARCH TRIGGERED ===');
-        
-        // Get current form values dynamically
-        const currentSearchParams = getCurrentSearchParams();
-        console.log('Current search params:', currentSearchParams);
-        
-        if (!currentSearchParams.origin || !currentSearchParams.destination || !currentSearchParams.departDate) {
-            console.error('Missing required fields:', currentSearchParams);
+        if (!searchParams.origin || !searchParams.destination || !searchParams.departDate) {
             alert('Please fill in all required search fields first.');
             return;
         }
 
-        console.log('Starting Amadeus search...');
         showLoading();
         
         try {
-            const results = await amadeusClient.searchFlights(currentSearchParams);
-            console.log('Amadeus search results:', results);
+            const results = await amadeusClient.searchFlights(searchParams);
             hideLoading();
             
             if (results.error) {
-                console.error('Amadeus search error:', results.message);
                 showError('Amadeus search failed: ' + results.message);
                 return;
             }
             
-            console.log('Displaying results...');
             displayAmadeusResults(results.flights);
             
             // Switch to Amadeus results tab
-            console.log('Switching to Amadeus tab...');
             document.querySelector('a[href="#amadeus-results"]').click();
             
         } catch (error) {
-            console.error('Amadeus search exception:', error);
             hideLoading();
             showError('Search failed: ' + error.message);
         }
     }
 
-    // Get current search parameters from form
-    function getCurrentSearchParams() {
-        console.log('=== GETTING CURRENT SEARCH PARAMS ===');
-        
-        const fromInput = document.querySelector("#flight-from");
-        const toInput = document.querySelector("#flight-to");
-        const departDate = document.querySelector("#depart_date");
-        const returnDate = document.querySelector("#return_date");
-        const seatClass = document.querySelector("#SeatType");
-        const tripType = document.querySelector('input[name="TripType"]:checked');
-        
-        console.log('Form elements found:');
-        console.log('- fromInput:', fromInput, fromInput?.value, fromInput?.dataset?.value);
-        console.log('- toInput:', toInput, toInput?.value, toInput?.dataset?.value);
-        console.log('- departDate:', departDate, departDate?.value);
-        console.log('- returnDate:', returnDate, returnDate?.value);
-        console.log('- seatClass:', seatClass, seatClass?.value);
-        console.log('- tripType:', tripType, tripType?.value);
-        
-        // Enhanced origin/destination handling
-        let origin = fromInput.dataset.value || fromInput.value.trim();
-        let destination = toInput.dataset.value || toInput.value.trim();
-        
-        // If user typed manually (no dataset.value), try to extract airport code
-        if (!fromInput.dataset.value && fromInput.value.length === 3) {
-            origin = fromInput.value.toUpperCase();
-            console.log('Using manual origin code:', origin);
-        }
-        if (!toInput.dataset.value && toInput.value.length === 3) {
-            destination = toInput.value.toUpperCase();
-            console.log('Using manual destination code:', destination);
-        }
-        
-        const params = {
-            origin: origin,
-            destination: destination,
-            departDate: departDate.value,
-            returnDate: returnDate.value,
-            seatClass: seatClass.value,
-            tripType: tripType ? tripType.value : '1',
-            adults: 1
-        };
-        
-        console.log('Final params:', params);
-        return params;
-    }
-
     // Search all sources for comparison
     async function searchAllSources() {
-        // Get current form values dynamically
-        const currentSearchParams = getCurrentSearchParams();
-        
-        if (!currentSearchParams.origin || !currentSearchParams.destination || !currentSearchParams.departDate) {
+        if (!searchParams.origin || !searchParams.destination || !searchParams.departDate) {
             alert('Please fill in all required search fields first.');
             return;
         }
@@ -867,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Search Amadeus
-            const amadeusResults = await amadeusClient.searchFlights(currentSearchParams);
+            const amadeusResults = await amadeusClient.searchFlights(searchParams);
             
             hideLoading();
             
@@ -887,7 +812,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Display Amadeus results with consistent styling
+    // Display Amadeus results
     function displayAmadeusResults(flights) {
         const container = document.getElementById('amadeus-flights-container');
         
@@ -906,61 +831,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h5><span class="amadeus-badge">LIVE</span> Found ${flights.length} flights</h5>
                 <small class="text-muted">Powered by Amadeus API</small>
             </div>
-            <div id="amadeus_flights_div">
         `;
         
-        flights.forEach((flight, index) => {
+        flights.forEach(flight => {
             const formatted = amadeusClient.formatFlightForDisplay(flight);
-            
-            // Use the same structure as local database results
             html += `
-                <div class="each-flight-div-box show amadeus-flight-card">
-                    <div class="each-flight-div" style="cursor: pointer;">
-                        <div class="flight-company">
-                            <div class="flight-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.3em" viewBox="0 0 440 384">
-                                    <path d="M14 335h405v43H14v-43zm417.5-199.5q3.5 12.5-3 24T409 175l-114 30l-92 25l-114 30l-34 10l-16-29l-39-67l31-9l42 33l106-28L91 17l41-11l147 137l113-30q13-4 24.5 3t15 19.5z" fill="#28a745"/>
-                                </svg>
-                            </div>
-                            <div class="company-details">
-                                <div class="company-name">${formatted.airline} <span class="amadeus-badge ml-1">LIVE</span></div>
-                                <div class="plane-name">${formatted.flightNumber} • ${formatted.aircraft}</div>
-                            </div>
-                        </div>
-                        <div class="flight-time flight-time-div">
-                            <div class="flight-origin-time">
-                                <div class="flight-time">
-                                    <h5>${formatted.departTime}</h5>
-                                </div>
-                                <div class="flight-place">
-                                    ${formatted.origin.code}
+                <div class="card mb-3 amadeus-flight-card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <div class="airline-info">
+                                    <h6 class="mb-1">${formatted.airline}</h6>
+                                    <small class="text-muted">${formatted.flightNumber}</small>
+                                    <div><small class="text-muted">${formatted.aircraft}</small></div>
                                 </div>
                             </div>
-                            <div class="flight-stops tooltip">
-                                <div class="flight-route-visual"></div>
-                                <span class="tooltiptext">${formatted.duration} ${formatted.isDirect ? '• Direct' : '• ' + formatted.stops + ' stop(s)'}</span>
-                            </div>
-                            <div class="flight-destination-time">
-                                <div class="flight-time">
-                                    <h5>${formatted.arrivalTime}</h5>
+                            
+                            <div class="col-md-6">
+                                <div class="flight-route">
+                                    <div class="row align-items-center">
+                                        <div class="col-4 text-center">
+                                            <div class="departure">
+                                                <div class="h5 mb-0">${formatted.departTime}</div>
+                                                <div class="text-muted">${formatted.origin.code}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 text-center">
+                                            <div class="flight-route-visual"></div>
+                                            <small class="text-muted d-block">${formatted.duration}</small>
+                                            <small class="text-muted">
+                                                ${formatted.isDirect ? 'Direct' : formatted.stops + ' stop(s)'}
+                                            </small>
+                                        </div>
+                                        <div class="col-4 text-center">
+                                            <div class="arrival">
+                                                <div class="h5 mb-0">${formatted.arrivalTime}</div>
+                                                <div class="text-muted">${formatted.destination.code}</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="flight-place">
-                                    ${formatted.destination.code}
+                            </div>
+                            
+                            <div class="col-md-3 text-center">
+                                <div class="price-info">
+                                    <div class="price-highlight">
+                                        ${formatted.price.currency} ${formatted.price.total}
+                                    </div>
+                                    <small class="text-muted d-block">${formatted.availableSeats} seats left</small>
+                                    <button class="btn btn-success btn-sm mt-2" 
+                                            onclick="selectAmadeusFlight('${formatted.offerId}')">
+                                        Select Flight
+                                    </button>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="flight-details">
-                            <div class="flight-price">
-                                <h5>
-                                    ${formatted.price.currency}
-                                    <span class="price-highlight">${formatted.price.total}</span>
-                                </h5>
-                                <small class="text-muted">${formatted.availableSeats} seats left</small>
-                            </div>
-                            <div class="flight-details-btn">
-                                <button class="btn btn-success" onclick="selectAmadeusFlight('${formatted.offerId}')">
-                                    Book Live Flight
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -968,10 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         });
         
-        html += '</div>';
         container.innerHTML = html;
-        
-        console.log('[AMADEUS DEBUG] Displayed', flights.length, 'flights in unified format');
     }
 
     // Display comparison
@@ -1062,12 +982,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Select Amadeus flight
     function selectAmadeusFlight(offerId) {
-        // Get current search parameters
-        const currentSearchParams = getCurrentSearchParams();
-        
         // Store selected offer for booking
         sessionStorage.setItem('selectedAmadeusOffer', offerId);
-        sessionStorage.setItem('searchParams', JSON.stringify(currentSearchParams));
+        sessionStorage.setItem('searchParams', JSON.stringify(searchParams));
         
         alert(`Flight selected! Offer ID: ${offerId}\n\nIn a full implementation, this would proceed to passenger details and booking.`);
         
@@ -1077,29 +994,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Utility functions
     function showLoading() {
-        const loadingElement = document.getElementById('search-loading');
-        if (loadingElement) {
-            loadingElement.style.display = 'block';
-        } else {
-            // Create loading element if it doesn't exist
-            const loadingHtml = `
-                <div id="search-loading" class="text-center py-4">
-                    <div class="loading-spinner"></div>
-                    <p class="mt-3">Searching flights from multiple sources...</p>
-                </div>
-            `;
-            const container = document.getElementById('flight-results-container') || document.querySelector('.hero');
-            if (container) {
-                container.insertAdjacentHTML('afterbegin', loadingHtml);
-            }
-        }
+        document.getElementById('search-loading').style.display = 'block';
     }
 
     function hideLoading() {
-        const loadingElement = document.getElementById('search-loading');
-        if (loadingElement) {
-            loadingElement.style.display = 'none';
-        }
+        document.getElementById('search-loading').style.display = 'none';
     }
 
     function showError(message) {
@@ -1112,16 +1011,9 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
-        // Insert error at the top of results container, or fallback to hero section
-        const container = document.getElementById('flight-results-container') || 
-                         document.querySelector('.search-enhancement') || 
-                         document.querySelector('.hero');
-        if (container) {
-            container.insertAdjacentHTML('afterbegin', alertHtml);
-        } else {
-            // Fallback to alert if no container found
-            alert('Error: ' + message);
-        }
+        // Insert error at the top of results container
+        const container = document.getElementById('flight-results-container');
+        container.insertAdjacentHTML('afterbegin', alertHtml);
     }
 
     // Auto-search if we have search parameters

@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +31,7 @@ SECRET_KEY = '=k3z-^1ov_hy5y%ebw(2e-npk@$#!(c8ix=+7so*hmw9m0c52*'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['https://cttravel.beyond-board.me']
+CSRF_TRUSTED_ORIGINS = ['https://amadeus.delilclinic.com']
 
 
 
@@ -137,3 +141,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 INTERNAL_IPS = [
     '127.0.0.1',
 ]
+
+# Amadeus API Configuration
+AMADEUS_CLIENT_ID = os.environ.get('AMADEUS_CLIENT_ID', 'your_client_id_here')
+AMADEUS_CLIENT_SECRET = os.environ.get('AMADEUS_CLIENT_SECRET', 'your_client_secret_here')
+AMADEUS_HOSTNAME = os.environ.get('AMADEUS_HOSTNAME', 'test')  # 'test' for sandbox, 'production' for live

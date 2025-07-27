@@ -61,20 +61,8 @@ function flight_to(event, focus=false) {
         input.dataset.value = '';
     }
     if(input.value.length > 0) {
-        fetch('query/places/'+input.value)
-        .then(response => response.json())
-        .then(places => {
-            list.innerHTML = '';
-            places.forEach(element => {
-                let div = document.createElement('div');
-                div.setAttribute('class', 'each_places_to_list');
-                div.classList.add('places__list');
-                div.setAttribute('onclick', "selectplace(this)");
-                div.setAttribute('data-value', element.code);
-                div.innerText = `${element.city} (${element.country})`;
-                list.append(div);
-            });
-        });
+        // Search both local and Amadeus sources
+        searchBothAirportSources(input.value, list);
     }
 }
 
@@ -86,21 +74,123 @@ function flight_from(event, focus=false) {
         input.dataset.value = '';
     }
     if(input.value.length > 0) {
-        fetch('query/places/'+input.value)
+        // Search both local and Amadeus sources
+        searchBothAirportSources(input.value, list);
+    }
+}
+
+// Enhanced airport search combining local and Amadeus sources
+async function searchBothAirportSources(query, listElement) {
+    // Clear existing results
+    listElement.innerHTML = '<div class="text-center p-2"><small>Searching...</small></div>';
+    
+    try {
+        // Search local database
+        const localPromise = fetch('query/places/' + query)
+            .then(response => response.json())
+            .catch(() => []);
+        
+        // Search Amadeus API if available
+        const amadeusPromise = typeof amadeusClient !== 'undefined' ? 
+            amadeusClient.getAirportSuggestions(query).catch(() => []) : 
+            Promise.resolve([]);
+        
+        // Wait for both searches
+        const [localPlaces, amadeusPlaces] = await Promise.all([localPromise, amadeusPromise]);
+        
+        // Clear loading message
+        listElement.innerHTML = '';
+        
+        // Combine and deduplicate results
+        const combinedResults = combineAirportResults(localPlaces, amadeusPlaces);
+        
+        if (combinedResults.length === 0) {
+            listElement.innerHTML = '<div class="text-center p-2 text-muted"><small>No airports found</small></div>';
+            return;
+        }
+        
+        // Display results
+        combinedResults.forEach(element => {
+            let div = document.createElement('div');
+            div.setAttribute('class', element.source === 'amadeus' ? 'each_places_amadeus_list' : 'each_places_local_list');
+            div.classList.add('places__list');
+            div.setAttribute('onclick', "selectplace(this)");
+            div.setAttribute('data-value', element.code);
+            
+            // Enhanced display with source indicator
+            const sourceIcon = element.source === 'amadeus' ? '🌐' : '📍';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${element.code}</strong> - ${element.city}
+                        <br><small class="text-muted">${element.country}</small>
+                    </div>
+                    <small class="text-muted">${sourceIcon}</small>
+                </div>
+            `;
+            
+            listElement.append(div);
+        });
+        
+    } catch (error) {
+        console.error('Airport search error:', error);
+        
+        // Fallback to local search only
+        fetch('query/places/' + query)
         .then(response => response.json())
         .then(places => {
-            list.innerHTML = '';
+            listElement.innerHTML = '';
             places.forEach(element => {
                 let div = document.createElement('div');
-                div.setAttribute('class', 'each_places_from_list');
+                div.setAttribute('class', 'each_places_local_list');
                 div.classList.add('places__list');
                 div.setAttribute('onclick', "selectplace(this)");
                 div.setAttribute('data-value', element.code);
                 div.innerText = `${element.city} (${element.country})`;
-                list.append(div);
+                listElement.append(div);
             });
         });
     }
+}
+
+// Combine and deduplicate airport results from multiple sources
+function combineAirportResults(localPlaces, amadeusPlaces) {
+    const seen = new Set();
+    const combined = [];
+    
+    // Add local places first (priority)
+    localPlaces.forEach(place => {
+        if (place.code && !seen.has(place.code.toUpperCase())) {
+            seen.add(place.code.toUpperCase());
+            combined.push({
+                code: place.code.toUpperCase(),
+                city: place.city,
+                country: place.country,
+                source: 'local'
+            });
+        }
+    });
+    
+    // Add Amadeus places (avoid duplicates)
+    amadeusPlaces.forEach(place => {
+        if (place.code && !seen.has(place.code.toUpperCase())) {
+            seen.add(place.code.toUpperCase());
+            combined.push({
+                code: place.code.toUpperCase(),
+                city: place.city || place.name,
+                country: place.country,
+                source: 'amadeus'
+            });
+        }
+    });
+    
+    // Sort by relevance (local first, then alphabetical)
+    return combined.sort((a, b) => {
+        if (a.source !== b.source) {
+            return a.source === 'local' ? -1 : 1;
+        }
+        return a.city.localeCompare(b.city);
+    });
 }
 
 function trip_type() {
@@ -118,6 +208,43 @@ function trip_type() {
 }
 
 function flight_search() {
+    const fromInput = document.querySelector("#flight-from");
+    const toInput = document.querySelector("#flight-to");
+    const departDate = document.querySelector("#depart_date");
+    const returnDate = document.querySelector("#return_date");
+    
+    // Check origin - either dataset.value (from dropdown) or input value (typed in)
+    if(!fromInput.dataset.value && !fromInput.value.trim()) {
+        alert("Please enter or select flight origin.");
+        return false;
+    }
+    
+    // Check destination - either dataset.value (from dropdown) or input value (typed in)
+    if(!toInput.dataset.value && !toInput.value.trim()) {
+        alert("Please enter or select flight destination.");
+        return false;
+    }
+    
+    // Check departure date for both trip types
+    if(!departDate.value) {
+        alert("Please select departure date.");
+        return false;
+    }
+    
+    // Check return date only for round trips
+    if(document.querySelector("#round-trip").checked) {
+        if(!returnDate.value) {
+            alert("Please select return date.");
+            return false;
+        }
+    }
+    
+    // If we get here, validation passed
+    return true;
+}
+
+function enhancedSearch() {
+    // Validate inputs first
     if(!document.querySelector("#flight-from").dataset.value) {
         alert("Please select flight origin.");
         return false;
@@ -126,20 +253,33 @@ function flight_search() {
         alert("Please select flight destination.");
         return false;
     }
-    if(document.querySelector("#one-way").checked) {
-        if(!document.querySelector("#depart_date").value) {
-            alert("Please select departure date.");
-            return false;
-        }
+    if(!document.querySelector("#depart_date").value) {
+        alert("Please select departure date.");
+        return false;
     }
+    
+    // Check return date for round trip
     if(document.querySelector("#round-trip").checked) {
-        if(!document.querySelector("#depart_date").value) {
-            alert("Please select departure date.");
-            return false;
-        }
         if(!document.querySelector("#return_date").value) {
             alert("Please select return date.");
             return false;
         }
     }
+    
+    // Build URL parameters for enhanced search
+    const params = new URLSearchParams({
+        Origin: document.querySelector("#flight-from").dataset.value,
+        Destination: document.querySelector("#flight-to").dataset.value,
+        DepartDate: document.querySelector("#depart_date").value,
+        SeatClass: document.querySelector("#SeatType").value,
+        TripType: document.querySelector("input[name='TripType']:checked").value
+    });
+    
+    // Add return date if round trip
+    if(document.querySelector("#round-trip").checked && document.querySelector("#return_date").value) {
+        params.append('ReturnDate', document.querySelector("#return_date").value);
+    }
+    
+    // Redirect to enhanced search page
+    window.location.href = `/enhanced-search?${params}`;
 }

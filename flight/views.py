@@ -1,13 +1,15 @@
-from django.shortcuts import render, HttpResponse, HttpResponseRedirect
+from django.shortcuts import render, HttpResponse, HttpResponseRedirect, redirect
 from django.urls import reverse
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
 
 from datetime import datetime
 import math
 from .models import *
 from capstone.utils import render_to_pdf, createticket
+from .amadeus_service import amadeus_service
 
 
 #Fee and Surcharge variable
@@ -129,6 +131,39 @@ def query(request, q):
         if (q in place.city.lower()) or (q in place.airport.lower()) or (q in place.code.lower()) or (q in place.country.lower()):
             filters.append(place)
     return JsonResponse([{'code':place.code, 'city':place.city, 'country': place.country} for place in filters], safe=False)
+
+def enhanced_search(request):
+    """
+    Enhanced search page that shows both local and Amadeus options
+    """
+    o_place = request.GET.get('Origin')
+    d_place = request.GET.get('Destination')
+    trip_type = request.GET.get('TripType', '1')
+    departdate = request.GET.get('DepartDate')
+    depart_date = datetime.strptime(departdate, "%Y-%m-%d") if departdate else datetime.now().date()
+    return_date = None
+    
+    if trip_type == '2':
+        returndate = request.GET.get('ReturnDate')
+        if returndate:
+            return_date = datetime.strptime(returndate, "%Y-%m-%d")
+    
+    seat = request.GET.get('SeatClass', 'economy')
+
+    try:
+        destination = Place.objects.get(code=d_place.upper())
+        origin = Place.objects.get(code=o_place.upper())
+    except Place.DoesNotExist:
+        return HttpResponse("Invalid airport codes provided")
+
+    return render(request, "flight/enhanced_search.html", {
+        'origin': origin,
+        'destination': destination,
+        'seat': seat.capitalize(),
+        'trip_type': trip_type,
+        'depart_date': depart_date,
+        'return_date': return_date,
+    })
 
 @csrf_exempt
 def flight(request):
@@ -489,3 +524,487 @@ def terms_and_conditions(request):
 
 def about_us(request):
     return render(request, 'flight/about.html')
+
+# Amadeus API Integration Views
+
+@csrf_exempt
+def amadeus_flight_search(request):
+    """
+    Search flights using Amadeus API
+    """
+    if request.method == 'GET':
+        # Get search parameters
+        origin = request.GET.get('Origin')
+        destination = request.GET.get('Destination')
+        depart_date = request.GET.get('DepartDate')
+        return_date = request.GET.get('ReturnDate')
+        seat_class = request.GET.get('SeatClass', 'ECONOMY').upper()
+        adults = int(request.GET.get('Adults', 1))
+        trip_type = request.GET.get('TripType', '1')
+        
+        # Map seat class to Amadeus format
+        seat_class_map = {
+            'economy': 'ECONOMY',
+            'business': 'BUSINESS', 
+            'first': 'FIRST'
+        }
+        amadeus_class = seat_class_map.get(seat_class.lower(), 'ECONOMY')
+        
+        # Search flights using Amadeus
+        search_result = amadeus_service.search_flights(
+            origin_code=origin,
+            destination_code=destination,
+            departure_date=depart_date,
+            return_date=return_date if trip_type == '2' else None,
+            adults=adults,
+            travel_class=amadeus_class
+        )
+        
+        if search_result.get('error'):
+            return JsonResponse({
+                'error': True,
+                'message': search_result.get('message', 'Flight search failed'),
+                'flights': []
+            })
+        
+        # Get place objects for display
+        try:
+            origin_place = Place.objects.get(code=origin.upper())
+            destination_place = Place.objects.get(code=destination.upper())
+        except Place.DoesNotExist:
+            return JsonResponse({
+                'error': True,
+                'message': 'Invalid airport codes provided',
+                'flights': []
+            })
+        
+        # Return Amadeus results
+        return JsonResponse({
+            'error': False,
+            'source': 'amadeus',
+            'flights': search_result['flights'],
+            'count': search_result['count'],
+            'origin': {
+                'code': origin_place.code,
+                'city': origin_place.city,
+                'country': origin_place.country
+            },
+            'destination': {
+                'code': destination_place.code,
+                'city': destination_place.city,
+                'country': destination_place.country
+            }
+        })
+    
+    return JsonResponse({'error': True, 'message': 'GET method required'})
+
+@csrf_exempt
+def unified_flight_search(request):
+    """
+    Unified flight search that displays results from both database and Amadeus API in the search template
+    """
+    if request.method == 'POST':
+        # Handle form submission from home page
+        o_place = request.POST.get('Origin')
+        d_place = request.POST.get('Destination')
+        trip_type = request.POST.get('TripType', '1')
+        departdate = request.POST.get('DepartDate')
+        returndate = request.POST.get('ReturnDate')
+        seat = request.POST.get('SeatClass', 'economy')
+        include_amadeus = request.POST.get('include_amadeus', 'true') == 'true'
+    else:
+        # Handle GET parameters (for modify search, etc.)
+        o_place = request.GET.get('Origin')
+        d_place = request.GET.get('Destination')
+        trip_type = request.GET.get('TripType', '1')
+        departdate = request.GET.get('DepartDate')
+        returndate = request.GET.get('ReturnDate')
+        seat = request.GET.get('SeatClass', 'economy')
+        include_amadeus = request.GET.get('include_amadeus', 'true') == 'true'
+
+    # Validate required parameters
+    if not all([o_place, d_place, departdate]):
+        messages.error(request, "Please provide all required search parameters.")
+        return redirect('home')
+
+    try:
+        # Parse dates
+        depart_date = datetime.strptime(departdate, "%Y-%m-%d")
+        return_date = None
+        if trip_type == '2' and returndate:
+            return_date = datetime.strptime(returndate, "%Y-%m-%d")
+
+        # Get place objects
+        try:
+            origin = Place.objects.get(code=o_place.upper())
+            destination = Place.objects.get(code=d_place.upper())
+        except Place.DoesNotExist:
+            messages.error(request, "Invalid airport codes provided.")
+            return redirect('home')
+
+        # Initialize result containers
+        local_flights = []
+        amadeus_flights = []
+        local_flights2 = []  # For return flights
+        amadeus_error = None
+        
+        # Search local database flights
+        flightday = Week.objects.get(name=depart_date.strftime("%A"))
+        
+        if seat.lower() == 'economy':
+            local_flights = Flight.objects.filter(
+                depart_day=flightday,
+                origin=origin,
+                destination=destination
+            ).exclude(economy_fare=0).order_by('economy_fare')
+        elif seat.lower() == 'business':
+            local_flights = Flight.objects.filter(
+                depart_day=flightday,
+                origin=origin,
+                destination=destination
+            ).exclude(business_fare=0).order_by('business_fare')
+        elif seat.lower() == 'first':
+            local_flights = Flight.objects.filter(
+                depart_day=flightday,
+                origin=origin,
+                destination=destination
+            ).exclude(first_fare=0).order_by('first_fare')
+
+        # Search return flights for round trip
+        if trip_type == '2' and return_date:
+            flightday2 = Week.objects.get(name=return_date.strftime("%A"))
+            origin2 = destination  # Return trip reverses origin/destination
+            destination2 = origin
+            
+            if seat.lower() == 'economy':
+                local_flights2 = Flight.objects.filter(
+                    depart_day=flightday2,
+                    origin=origin2,
+                    destination=destination2
+                ).exclude(economy_fare=0).order_by('economy_fare')
+            elif seat.lower() == 'business':
+                local_flights2 = Flight.objects.filter(
+                    depart_day=flightday2,
+                    origin=origin2,
+                    destination=destination2
+                ).exclude(business_fare=0).order_by('business_fare')
+            elif seat.lower() == 'first':
+                local_flights2 = Flight.objects.filter(
+                    depart_day=flightday2,
+                    origin=origin2,
+                    destination=destination2
+                ).exclude(first_fare=0).order_by('first_fare')
+
+        # Search Amadeus API if requested
+        if include_amadeus:
+            try:
+                # Map seat class to Amadeus format
+                seat_class_map = {
+                    'economy': 'ECONOMY',
+                    'business': 'BUSINESS', 
+                    'first': 'FIRST'
+                }
+                amadeus_class = seat_class_map.get(seat.lower(), 'ECONOMY')
+                
+                # Search Amadeus flights
+                amadeus_result = amadeus_service.search_flights(
+                    origin_code=origin.code,
+                    destination_code=destination.code,
+                    departure_date=depart_date.strftime("%Y-%m-%d"),
+                    return_date=return_date.strftime("%Y-%m-%d") if return_date else None,
+                    adults=1,
+                    travel_class=amadeus_class,
+                    max_results=20
+                )
+                
+                if not amadeus_result.get('error'):
+                    amadeus_flights = amadeus_result.get('flights', [])
+                else:
+                    amadeus_error = amadeus_result.get('message', 'Amadeus search failed')
+                    
+            except Exception as e:
+                amadeus_error = f"Amadeus API error: {str(e)}"
+
+        # Calculate price ranges for filters
+        max_price = min_price = 0
+        max_price2 = min_price2 = 0
+        
+        if local_flights:
+            if seat.lower() == 'economy':
+                prices = [f.economy_fare for f in local_flights]
+            elif seat.lower() == 'business':
+                prices = [f.business_fare for f in local_flights]
+            else:
+                prices = [f.first_fare for f in local_flights]
+            max_price = max(prices)
+            min_price = min(prices)
+            
+        if local_flights2:
+            if seat.lower() == 'economy':
+                prices2 = [f.economy_fare for f in local_flights2]
+            elif seat.lower() == 'business':
+                prices2 = [f.business_fare for f in local_flights2]
+            else:
+                prices2 = [f.first_fare for f in local_flights2]
+            max_price2 = max(prices2)
+            min_price2 = min(prices2)
+
+        # Include Amadeus prices in range calculation
+        if amadeus_flights:
+            amadeus_prices = [float(f['price']['total']) for f in amadeus_flights]
+            if amadeus_prices:
+                if max_price == 0:
+                    max_price = max(amadeus_prices)
+                    min_price = min(amadeus_prices)
+                else:
+                    max_price = max(max_price, max(amadeus_prices))
+                    min_price = min(min_price, min(amadeus_prices))
+
+        # Prepare context for template
+        context = {
+            'flights': local_flights,
+            'amadeus_flights': amadeus_flights,
+            'origin': origin,
+            'destination': destination,
+            'seat': seat.capitalize(),
+            'trip_type': trip_type,
+            'depart_date': depart_date,
+            'return_date': return_date,
+            'max_price': math.ceil(max_price/100)*100 if max_price else 1000,
+            'min_price': math.floor(min_price/100)*100 if min_price else 0,
+            'include_amadeus': include_amadeus,
+            'amadeus_error': amadeus_error,
+            'available_days': [],
+        }
+        
+        # Add return flight data for round trips
+        if trip_type == '2':
+            context.update({
+                'flights2': local_flights2,
+                'origin2': destination,  # Return trip
+                'destination2': origin,
+                'max_price2': math.ceil(max_price2/100)*100 if max_price2 else 1000,
+                'min_price2': math.floor(min_price2/100)*100 if min_price2 else 0,
+                'available_days2': [],
+            })
+
+        return render(request, "flight/search.html", context)
+        
+    except Exception as e:
+        messages.error(request, f"Search error: {str(e)}")
+        return redirect('home')
+
+@csrf_exempt
+def enhanced_flight_search(request):
+    """
+    Enhanced flight search that combines database and Amadeus results
+    """
+    o_place = request.GET.get('Origin')
+    d_place = request.GET.get('Destination')
+    trip_type = request.GET.get('TripType', '1')
+    departdate = request.GET.get('DepartDate')
+    depart_date = datetime.strptime(departdate, "%Y-%m-%d") if departdate else datetime.now().date()
+    return_date = None
+    
+    if trip_type == '2':
+        returndate = request.GET.get('ReturnDate')
+        if returndate:
+            return_date = datetime.strptime(returndate, "%Y-%m-%d")
+    
+    seat = request.GET.get('SeatClass', 'economy')
+    source = request.GET.get('source', 'both')  # 'database', 'amadeus', or 'both'
+
+    try:
+        destination = Place.objects.get(code=d_place.upper())
+        origin = Place.objects.get(code=o_place.upper())
+    except Place.DoesNotExist:
+        return HttpResponse("Invalid airport codes provided")
+
+    # Initialize variables
+    flights = []
+    flights2 = []
+    amadeus_flights = []
+    amadeus_flights2 = []
+    max_price = 0
+    min_price = 0
+    max_price2 = 0
+    min_price2 = 0
+    available_days = []
+    available_days2 = []
+
+    # Get database flights if requested
+    if source in ['database', 'both']:
+        flightday = Week.objects.get(number=depart_date.weekday())
+        
+        if trip_type == '2':
+            flightday2 = Week.objects.get(number=return_date.weekday())
+            origin2 = Place.objects.get(code=d_place.upper())
+            destination2 = Place.objects.get(code=o_place.upper())
+
+        # Database flight search logic (copied from existing flight view)
+        if seat == 'economy':
+            flights = Flight.objects.filter(depart_day=flightday,origin=origin,destination=destination).exclude(economy_fare=0).order_by('economy_fare')
+            if not flights.exists():
+                available_days = Flight.objects.filter(origin=origin, destination=destination).exclude(economy_fare=0).values_list('depart_day__name', flat=True).distinct()
+            try:
+                max_price = flights.last().economy_fare
+                min_price = flights.first().economy_fare
+            except:
+                max_price = 0
+                min_price = 0
+
+            if trip_type == '2':
+                flights2 = Flight.objects.filter(depart_day=flightday2,origin=origin2,destination=destination2).exclude(economy_fare=0).order_by('economy_fare')
+                if not flights2.exists():
+                    available_days2 = Flight.objects.filter(origin=origin2, destination=destination2).exclude(economy_fare=0).values_list('depart_day__name', flat=True).distinct()
+                try:
+                    max_price2 = flights2.last().economy_fare
+                    min_price2 = flights2.first().economy_fare
+                except:
+                    max_price2 = 0
+                    min_price2 = 0
+
+        elif seat == 'business':
+            flights = Flight.objects.filter(depart_day=flightday,origin=origin,destination=destination).exclude(business_fare=0).order_by('business_fare')
+            if not flights.exists():
+                available_days = Flight.objects.filter(origin=origin, destination=destination).exclude(business_fare=0).values_list('depart_day__name', flat=True).distinct()
+            try:
+                max_price = flights.last().business_fare
+                min_price = flights.first().business_fare
+            except:
+                max_price = 0
+                min_price = 0
+
+            if trip_type == '2':
+                flights2 = Flight.objects.filter(depart_day=flightday2,origin=origin2,destination=destination2).exclude(business_fare=0).order_by('business_fare')
+                if not flights2.exists():
+                    available_days2 = Flight.objects.filter(origin=origin2, destination=destination2).exclude(business_fare=0).values_list('depart_day__name', flat=True).distinct()
+                try:
+                    max_price2 = flights2.last().business_fare
+                    min_price2 = flights2.first().business_fare
+                except:
+                    max_price2 = 0
+                    min_price2 = 0
+
+        elif seat == 'first':
+            flights = Flight.objects.filter(depart_day=flightday,origin=origin,destination=destination).exclude(first_fare=0).order_by('first_fare')
+            if not flights.exists():
+                available_days = Flight.objects.filter(origin=origin, destination=destination).exclude(first_fare=0).values_list('depart_day__name', flat=True).distinct()
+            try:
+                max_price = flights.last().first_fare
+                min_price = flights.first().first_fare
+            except:
+                max_price = 0
+                min_price = 0
+
+            if trip_type == '2':
+                flights2 = Flight.objects.filter(depart_day=flightday2,origin=origin2,destination=destination2).exclude(first_fare=0).order_by('first_fare')
+                if not flights2.exists():
+                    available_days2 = Flight.objects.filter(origin=origin2, destination=destination2).exclude(first_fare=0).values_list('depart_day__name', flat=True).distinct()
+                try:
+                    max_price2 = flights2.last().first_fare
+                    min_price2 = flights2.first().first_fare
+                except:
+                    max_price2 = 0
+                    min_price2 = 0
+
+    # Get Amadeus flights if requested
+    if source in ['amadeus', 'both']:
+        # Map seat class to Amadeus format
+        seat_class_map = {
+            'economy': 'ECONOMY',
+            'business': 'BUSINESS', 
+            'first': 'FIRST'
+        }
+        amadeus_class = seat_class_map.get(seat.lower(), 'ECONOMY')
+        
+        # Search flights using Amadeus
+        search_result = amadeus_service.search_flights(
+            origin_code=o_place,
+            destination_code=d_place,
+            departure_date=departdate,
+            return_date=returndate if trip_type == '2' else None,
+            adults=1,
+            travel_class=amadeus_class
+        )
+        
+        if not search_result.get('error'):
+            amadeus_flights = search_result.get('flights', [])
+
+    # Render the search template with both database and Amadeus results
+    context = {
+        'flights': flights,
+        'amadeus_flights': amadeus_flights,
+        'origin': origin,
+        'destination': destination,
+        'seat': seat.capitalize(),
+        'trip_type': trip_type,
+        'depart_date': depart_date,
+        'return_date': return_date,
+        'max_price': math.ceil(max_price/100)*100 if max_price else 0,
+        'min_price': math.floor(min_price/100)*100 if min_price else 0,
+        'available_days': available_days,
+        'source': source,
+    }
+
+    if trip_type == '2':
+        context.update({
+            'flights2': flights2,
+            'amadeus_flights2': amadeus_flights2,
+            'origin2': origin2 if 'origin2' in locals() else None,
+            'destination2': destination2 if 'destination2' in locals() else None,
+            'max_price2': math.ceil(max_price2/100)*100 if max_price2 else 0,
+            'min_price2': math.floor(min_price2/100)*100 if min_price2 else 0,
+            'available_days2': available_days2
+        })
+
+    return render(request, "flight/search.html", context)
+
+def amadeus_airport_suggestions(request, q):
+    """
+    Get airport suggestions from Amadeus API
+    """
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+    
+    suggestions = amadeus_service.get_airport_suggestions(q)
+    
+    # Format suggestions to match existing format
+    formatted_suggestions = []
+    for suggestion in suggestions:
+        if suggestion.get('code'):  # Only include results with IATA codes
+            formatted_suggestions.append({
+                'code': suggestion['code'],
+                'city': suggestion.get('city', suggestion.get('name', '')),
+                'country': suggestion.get('country', ''),
+                'name': suggestion.get('name', ''),
+                'type': suggestion.get('type', '')
+            })
+    
+    return JsonResponse(formatted_suggestions, safe=False)
+
+@csrf_exempt
+def amadeus_flight_price_analysis(request):
+    """
+    Get flight price analysis from Amadeus
+    """
+    if request.method == 'GET':
+        origin = request.GET.get('Origin')
+        destination = request.GET.get('Destination') 
+        depart_date = request.GET.get('DepartDate')
+        
+        if not all([origin, destination, depart_date]):
+            return JsonResponse({
+                'error': True,
+                'message': 'Missing required parameters'
+            })
+        
+        analysis = amadeus_service.get_flight_price_analysis(
+            origin_code=origin,
+            destination_code=destination,
+            departure_date=depart_date
+        )
+        
+        return JsonResponse(analysis)
+    
+    return JsonResponse({'error': True, 'message': 'GET method required'})

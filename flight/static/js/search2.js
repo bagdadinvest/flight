@@ -97,36 +97,59 @@ function filter2(element=null) {
 }
 
 
-function arrival_slot(flights, start, end) {
+function departure_slot(flights, start, end) {
     if (flights) {
         for (let i = 0; i < flights.length; i++) {
-            time = flights[i].querySelector(".flight-destination-time .flight-time h5").innerText.split(":");
-            if((parseInt(time[0]) >= parseInt(start)) && (parseInt(time[0]) < parseInt(end))) {
-                //flights[i].style.display = 'block';
-                flights[i].classList.add('show');
-                flights[i].classList.remove('hide');
+            let timeElement;
+            
+            // Check if it's an Amadeus flight or local flight
+            if (flights[i].classList.contains('amadeus-flight')) {
+                // For Amadeus flights, try to get time from h5 element
+                timeElement = flights[i].querySelector(".flight-origin-time .flight-time h5");
+            } else {
+                // For local flights, use existing logic
+                timeElement = flights[i].querySelector(".flight-origin-time .flight-time h5");
             }
-            else {
-                //flights[i].style.display = 'none';
-                flights[i].classList.add('hide');
-                flights[i].classList.remove('show');
+            
+            if (timeElement && timeElement.innerText && timeElement.innerText !== '--:--') {
+                let time = timeElement.innerText.split(":");
+                if (time.length >= 2 && (parseInt(time[0]) >= parseInt(start)) && (parseInt(time[0]) < parseInt(end))) {
+                    flights[i].classList.add('show');
+                    flights[i].classList.remove('hide');
+                }
+                else {
+                    flights[i].classList.add('hide');
+                    flights[i].classList.remove('show');
+                }
             }
         }
     }
 }
-function departure_slot(flights, start, end) {
+
+function arrival_slot(flights, start, end) {
     if (flights) {
         for (let i = 0; i < flights.length; i++) {
-            time = flights[i].querySelector(".flight-origin-time .flight-time h5").innerText.split(":");
-            if((parseInt(time[0]) >= parseInt(start)) && (parseInt(time[0]) < parseInt(end))) {
-                //flights[i].style.display = 'block';
-                flights[i].classList.add('show');
-                flights[i].classList.remove('hide');
+            let timeElement;
+            
+            // Check if it's an Amadeus flight or local flight
+            if (flights[i].classList.contains('amadeus-flight')) {
+                // For Amadeus flights, try to get time from h5 element
+                timeElement = flights[i].querySelector(".flight-destination-time .flight-time h5");
+            } else {
+                // For local flights, use existing logic
+                timeElement = flights[i].querySelector(".flight-destination-time .flight-time h5");
             }
-            else {
-                //flights[i].style.display = 'none';
-                flights[i].classList.add('hide');
-                flights[i].classList.remove('show');
+            
+            if (timeElement && timeElement.innerText && timeElement.innerText !== '--:--') {
+                let time = timeElement.innerText.split(":");
+                if (time.length >= 2 && (parseInt(time[0]) >= parseInt(start)) && (parseInt(time[0]) < parseInt(end))) {
+                    flights[i].classList.add('show');
+                    flights[i].classList.remove('hide');
+                }
+                else {
+                    flights[i].classList.add('hide');
+                    flights[i].classList.remove('show');
+                }
             }
         }
     }
@@ -268,18 +291,27 @@ function filter_price() {
     let div = document.querySelector("#flights_div");
     let flights = div.querySelectorAll(".each-flight-div-box");
     for (let i = 0; i < flights.length; i++) {
-        if (flights[i].querySelector(".flight-price span").innerText > parseInt(value)) {
-            //flights[i].style.display = 'none';
+        let price = 0;
+        
+        // Check if it's an Amadeus flight
+        if (flights[i].classList.contains('amadeus-flight')) {
+            // For Amadeus flights, get price from data attribute
+            price = parseFloat(flights[i].dataset.amadeusPrice) || 0;
+        } else {
+            // For local flights, get price from span
+            let priceSpan = flights[i].querySelector(".flight-price span");
+            price = priceSpan ? parseFloat(priceSpan.innerText) : 0;
+        }
+        
+        if (price > parseInt(value)) {
             flights[i].classList.add('hide');
             flights[i].classList.remove('show');
         }
         else {
-            //flights[i].style.display = 'block';
             flights[i].classList.add('show');
             flights[i].classList.remove('hide');
         }
     }
-    
 }
 
 function reset_filter() {

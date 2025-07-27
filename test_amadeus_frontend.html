@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Amadeus Test Page</title>
+    <script src="http://127.0.0.1:8000/static/js/amadeus.js"></script>
+</head>
+<body>
+    <h1>Amadeus API Test</h1>
+    
+    <div>
+        <h3>Test Amadeus Search</h3>
+        <button onclick="testAmadeusSearch()">Test Flight Search (LAX to JFK)</button>
+        <button onclick="testAirportSuggestions()">Test Airport Suggestions (New York)</button>
+    </div>
+    
+    <div id="results" style="margin-top: 20px; padding: 20px; border: 1px solid #ccc;">
+        <h4>Results will appear here...</h4>
+    </div>
+
+    <script>
+        // Test flight search
+        async function testAmadeusSearch() {
+            console.log('Testing Amadeus flight search...');
+            document.getElementById('results').innerHTML = '<h4>Searching flights...</h4>';
+            
+            try {
+                const searchParams = {
+                    origin: 'LAX',
+                    destination: 'JFK',
+                    departDate: '2025-08-01',
+                    seatClass: 'economy',
+                    adults: 1,
+                    tripType: '1'
+                };
+                
+                console.log('Search params:', searchParams);
+                const results = await amadeusClient.searchFlights(searchParams);
+                console.log('Results:', results);
+                
+                document.getElementById('results').innerHTML = `
+                    <h4>Flight Search Results</h4>
+                    <p><strong>Status:</strong> ${results.error ? 'Error' : 'Success'}</p>
+                    <p><strong>Flights found:</strong> ${results.flights ? results.flights.length : 0}</p>
+                    <pre>${JSON.stringify(results, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                document.getElementById('results').innerHTML = `
+                    <h4>Error</h4>
+                    <p style="color: red;">${error.message}</p>
+                `;
+            }
+        }
+        
+        // Test airport suggestions
+        async function testAirportSuggestions() {
+            console.log('Testing Amadeus airport suggestions...');
+            document.getElementById('results').innerHTML = '<h4>Getting airport suggestions...</h4>';
+            
+            try {
+                const results = await amadeusClient.getAirportSuggestions('new york');
+                console.log('Airport results:', results);
+                
+                document.getElementById('results').innerHTML = `
+                    <h4>Airport Suggestions Results</h4>
+                    <p><strong>Airports found:</strong> ${results.airports ? results.airports.length : 0}</p>
+                    <pre>${JSON.stringify(results, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                document.getElementById('results').innerHTML = `
+                    <h4>Error</h4>
+                    <p style="color: red;">${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

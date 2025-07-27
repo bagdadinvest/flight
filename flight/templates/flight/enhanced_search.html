@@ -1,0 +1,316 @@
+{% extends 'flight/layout.html' %}
+
+{% load static %}
+
+{% block head %}
+    <title>Enhanced Flight Search | Flight</title>
+    <link rel="stylesheet" href="{% static 'css/search_style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/search2_style.css' %}">
+    <script src="{% static 'js/search2.js' %}"></script>
+    <style>
+        .flight-source-tabs .nav-link {
+            color: #666;
+            border: 1px solid #ddd;
+            margin-right: 5px;
+        }
+        .flight-source-tabs .nav-link.active {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+        .amadeus-flight {
+            border-left: 4px solid #28a745;
+        }
+        .local-flight {
+            border-left: 4px solid #007bff;
+        }
+        .price-comparison-widget {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        .flight-result-card {
+            transition: transform 0.2s;
+        }
+        .flight-result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .amadeus-badge {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .live-indicator {
+            color: #28a745;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <section class="section section1">
+        <!-- Search Query Display -->
+        <div class="query-data-div">
+            <div class="container">
+                <div class="trip-places">
+                    <div class="from-div text-align-left">
+                        <div class="small-label">From</div>
+                        <div class="white">{{origin.city}} ({{origin.code}})</div>
+                    </div>
+                    <div class="trip-type-div white">
+                        <div class="small-label">&nbsp;</div>
+                        {% if trip_type == '2' %}
+                            <svg width="1.5em" height="1.5em" viewBox="0 0 16 16" class="bi bi-arrow-left-right" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-1.147 1.146a.5.5 0 0 0 .708.708l2-2a.5.5 0 0 0 0-.708l-2-2a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l1.147 1.146a.5.5 0 1 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/>
+                            </svg>
+                        {% else %}
+                            <svg width="1.5em" height="1.5em" viewBox="0 0 16 16" class="bi bi-arrow-right" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                            </svg>
+                        {% endif %}
+                    </div>
+                    <div class="to-div text-align-right">
+                        <div class="small-label">To</div>
+                        <div class="white">{{destination.city}} ({{destination.code}})</div>
+                    </div>
+                </div>
+                
+                <!-- Enhanced Search Options -->
+                <div class="search-options mt-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-database"></i> Local Database Search
+                                    </h6>
+                                    <p class="card-text small">Search from our curated flight database</p>
+                                    <button class="btn btn-primary btn-sm" onclick="searchLocalFlights()">
+                                        Search Local
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-satellite live-indicator"></i> Live Amadeus Search
+                                    </h6>
+                                    <p class="card-text small">Real-time flight data from Amadeus</p>
+                                    <button class="btn btn-success btn-sm" onclick="searchAmadeusFlights()">
+                                        Search Live
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Search All Button -->
+                <div class="text-center mt-3">
+                    <button class="btn btn-lg btn-warning" onclick="searchAllSources()">
+                        <i class="fas fa-search"></i> Search All Sources
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Loading Indicator -->
+    <div id="flight-search-loading" class="d-none text-center py-4">
+        <div class="loading-spinner"></div>
+        <p class="mt-2">Searching flights from multiple sources...</p>
+    </div>
+
+    <!-- Results Section -->
+    <section class="section section2">
+        <div class="container-fluid">
+            <div id="flight-results">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Search parameters from Django template
+        const searchParams = {
+            origin: '{{origin.code}}',
+            destination: '{{destination.code}}',
+            departDate: '{{depart_date|date:"Y-m-d"}}',
+            returnDate: '{{return_date|date:"Y-m-d"}}',
+            seatClass: '{{seat|lower}}',
+            tripType: '{{trip_type}}',
+            adults: 1
+        };
+
+        // Search local flights function
+        async function searchLocalFlights() {
+            showLoading();
+            try {
+                // Redirect to existing search functionality
+                const params = new URLSearchParams({
+                    Origin: searchParams.origin,
+                    Destination: searchParams.destination,
+                    DepartDate: searchParams.departDate,
+                    SeatClass: searchParams.seatClass,
+                    TripType: searchParams.tripType
+                });
+                
+                if (searchParams.returnDate && searchParams.tripType === '2') {
+                    params.append('ReturnDate', searchParams.returnDate);
+                }
+                
+                window.location.href = `/flight?${params}`;
+                
+            } catch (error) {
+                hideLoading();
+                showErrorMessage('Local search failed: ' + error.message);
+            }
+        }
+
+        // Search Amadeus flights
+        async function searchAmadeusFlights() {
+            showLoading();
+            try {
+                const results = await amadeusClient.searchFlights(searchParams);
+                hideLoading();
+                
+                if (results.error) {
+                    showErrorMessage(results.message);
+                    return;
+                }
+                
+                displayAmadeusResults(results);
+                
+            } catch (error) {
+                hideLoading();
+                showErrorMessage('Amadeus search failed: ' + error.message);
+            }
+        }
+
+        // Search all sources
+        async function searchAllSources() {
+            showLoading();
+            try {
+                const amadeusResults = await amadeusClient.searchFlights(searchParams);
+                hideLoading();
+                
+                if (amadeusResults.error) {
+                    showErrorMessage('Live search failed: ' + amadeusResults.message);
+                } else {
+                    displayCombinedResults({
+                        amadeus: { success: true, data: amadeusResults },
+                        local: { success: false, data: { flights: [] } }
+                    }, searchParams);
+                }
+                
+            } catch (error) {
+                hideLoading();
+                showErrorMessage('Search failed: ' + error.message);
+            }
+        }
+
+        // Display Amadeus-only results
+        function displayAmadeusResults(results) {
+            const resultsContainer = document.querySelector('#flight-results');
+            
+            let html = `
+                <div class="results-header mb-4">
+                    <h3>
+                        <span class="amadeus-badge">LIVE</span>
+                        Amadeus Flight Results (${results.flights.length})
+                    </h3>
+                    <p class="text-muted">Real-time flight data powered by Amadeus</p>
+                </div>
+            `;
+            
+            html += renderAmadeusFlightList(results.flights);
+            resultsContainer.innerHTML = html;
+        }
+
+        // Utility functions
+        function showLoading() {
+            document.querySelector('#flight-search-loading')?.classList.remove('d-none');
+        }
+
+        function hideLoading() {
+            document.querySelector('#flight-search-loading')?.classList.add('d-none');
+        }
+
+        function showErrorMessage(message) {
+            const resultsContainer = document.querySelector('#flight-results');
+            resultsContainer.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Search Error:</strong> ${message}
+                </div>
+            `;
+        }
+
+        // Initialize price analysis on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Get price analysis from Amadeus
+            try {
+                const priceAnalysis = await amadeusClient.getPriceAnalysis(
+                    searchParams.origin,
+                    searchParams.destination,
+                    searchParams.departDate
+                );
+                
+                if (!priceAnalysis.error) {
+                    displayPriceInsights(priceAnalysis);
+                }
+            } catch (error) {
+                console.log('Price analysis not available:', error);
+            }
+        });
+
+        function displayPriceInsights(analysis) {
+            const insightsHtml = `
+                <div class="price-insights-card mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-chart-line"></i> Price Insights
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="small text-muted">
+                                Historical price data for ${searchParams.origin} → ${searchParams.destination}
+                            </p>
+                            <div class="price-metrics">
+                                <!-- Price metrics would be displayed here -->
+                                <small>Currency: ${analysis.currency}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.querySelector('#flight-results').insertAdjacentHTML('afterbegin', insightsHtml);
+        }
+    </script>
+{% endblock %}
