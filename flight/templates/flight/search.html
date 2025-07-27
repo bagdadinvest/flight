@@ -182,11 +182,11 @@
                                             <input type="range" class="form-control-range" min="{{min_price}}" max="{{max_price}}" value="{{max_price}}" oninput="filter()">
                                             <div class="price-range-output">
                                                 <div class="initial-price-range">
-                                                    <span class="currency-symbol">₹</span>
+                                                    <span class="currency-symbol">€</span>
                                                     <span class="initial-price-value">{{min_price}}</span>
                                                 </div>
                                                 <div class="final-price-range">
-                                                    <span class="currency-symbol">₹</span>
+                                                    <span class="currency-symbol">€</span>
                                                     <span class="final-price-value"></span>
                                                 </div>
                                             </div>
@@ -298,7 +298,7 @@
                                 </div>
                             </div>
                             <div class="close-filter">
-                                <button class="btn btn-danger b2" onclick="close_filter(this)">
+                                <button class="btn btn-outline-info" onclick="close_filter(this)">
                                     SHOW RESULTS
                                 </button>
                             </div>
@@ -390,7 +390,7 @@
                                             <div class="flight-details">
                                                 <div class="flight-price">
                                                     <h5>
-                                                        ₹ 
+                                                        €
                                                         <span>
                                                             {% if seat == 'Economy' %}{{flight.economy_fare}}{% endif %}
                                                             {% if seat == 'Business' %}{{flight.business_fare}}{% endif %}
@@ -409,7 +409,7 @@
                                                             <input type="hidden" name="flight1Id" value="{{flight.id}}">
                                                             <input type="hidden" name="flight1Date", value="{{depart_date|date:'d-m-Y'}}">
                                                             <input type="hidden" name="seatClass" value="{{seat}}">
-                                                            <button class="btn btn-primary btn-danger o-b" type="submit">
+                                                            <button class="btn btn-outline-info" type="submit">
                                                             
                                                                 Book Flight <!--&#8594;-->
                                                             </button>
@@ -436,8 +436,43 @@
                                 <br><br>
                                 <h3>Sorry, No Flight for this Search</h3>
                                 <p>
-                                    We cannnot find any flights for the cabin class of your search. Please modify your search criteria and try again.
+                                    We cannot find any flights for the cabin class of your search on the specified date. Please modify your search criteria and try again.
                                 </p>
+                                {% if available_days %}
+                                    <p>Available flights on other days of the week:</p>
+                                    <ul id="available-days-list">
+                                        {% for day in available_days %}
+                                            <li data-day="{{ day }}">{{ day }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <script>
+                                        document.addEventListener("DOMContentLoaded", function() {
+                                            const availableDaysList = document.getElementById("available-days-list");
+                                            const currentUrl = new URL(window.location.href);
+                                            const departDate = new Date(currentUrl.searchParams.get("DepartDate"));
+                                            const dayMap = {
+                                                "Monday": 1,
+                                                "Tuesday": 2,
+                                                "Wednesday": 3,
+                                                "Thursday": 4,
+                                                "Friday": 5,
+                                                "Saturday": 6,
+                                                "Sunday": 0
+                                            };
+
+                                            availableDaysList.querySelectorAll("li").forEach(function(li) {
+                                                const day = li.getAttribute("data-day");
+                                                const dayIndex = dayMap[day];
+                                                let nextDate = new Date(departDate);
+                                                nextDate.setDate(departDate.getDate() + ((dayIndex - departDate.getDay() + 7) % 7));
+                                                const nextDateString = nextDate.toISOString().split('T')[0];
+                                                const newUrl = new URL(currentUrl);
+                                                newUrl.searchParams.set("DepartDate", nextDateString);
+                                                li.innerHTML = `<a href="${newUrl.href}">${day}</a>`;
+                                            });
+                                        });
+                                    </script>
+                                {% endif %}
                             </div>
                         </div>
                     {% endif %}
@@ -468,11 +503,11 @@
                                                 <input type="range" class="form-control-range" min="{{min_price2}}" max="{{max_price2}}" value="{{max_price2}}" oninput="filter2()">
                                                 <div class="price-range-output">
                                                     <div class="initial-price-range">
-                                                        <span class="currency-symbol">₹</span>
+                                                        <span class="currency-symbol">€</span>
                                                         <span class="initial-price-value">{{min_price2}}</span>
                                                     </div>
                                                     <div class="final-price-range">
-                                                        <span class="currency-symbol">₹</span>
+                                                        <span class="currency-symbol">€</span>
                                                         <span class="final-price-value"></span>
                                                     </div>
                                                 </div>
@@ -584,7 +619,7 @@
                                     </div>
                                 </div>
                                 <div class="close-filter">
-                                    <button class="btn btn-danger b2" onclick="close_filter(this)">
+                                    <button class="btn btn-outline-info" onclick="close_filter(this)">
                                         SHOW RESULTS
                                     </button>
                                 </div>
@@ -676,7 +711,7 @@
                                                 <div class="flight-details">
                                                     <div class="flight-price">
                                                         <h5>
-                                                            ₹ 
+                                                            €
                                                             <span>
                                                                 {% if seat == 'Economy' %}{{flight2.economy_fare}}{% endif %}
                                                                 {% if seat == 'Business' %}{{flight2.business_fare}}{% endif %}
@@ -696,7 +731,7 @@
                                                                 <input type="hidden" name="flight1Id" value="{{flight2.id}}">
                                                                 <input type="hidden" name="flight1Date", value="{{depart_date|date:'d-m-Y'}}">
                                                                 <input type="hidden" name="seatClass" value="{{seat}}">
-                                                                <button class="btn btn-primary btn-danger" type="submit">
+                                                                <button class="btn btn-outline-info" type="submit">
                                                                     Book Flight &#8594;
                                                                 </button>
                                                             </form>
@@ -738,7 +773,7 @@
                             <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                                 <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
                             </svg>
-                            <span>{{destination.code|upper}}</span>&nbsp;&nbsp;@&nbsp;&nbsp;₹
+                            <span>{{destination.code|upper}}</span>&nbsp;&nbsp;@&nbsp;&nbsp;€
                             <span id="select-f1-fare">
                                 {% if seat == "Economy" %}
                                     {{flights.all.0.economy_fare}}
@@ -766,9 +801,9 @@
                                 <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
                             </svg>
                             <span>{{origin.code|upper}}</span>
-                            &nbsp;&nbsp;@&nbsp;&nbsp;₹
+                            &nbsp;&nbsp;@&nbsp;&nbsp;€
                             {% if flights2 %}
-                                &nbsp;&nbsp;@&nbsp;&nbsp;₹
+                                &nbsp;&nbsp;@&nbsp;&nbsp;€
                                 <span id="select-f2-fare">
                                     {% if seat == "Economy" %}
                                         {{flights2.all.0.economy_fare}}
@@ -799,7 +834,7 @@
                             <span>TOTAL FARE</span>
                         </div>
                         <div>
-                            <span>₹
+                            <span>€
                                 <span id="select-total-fare">
                                     {% if flights2 %}
                                         {% if seat == "Economy" %}
@@ -845,7 +880,7 @@
                                 <div>AMOUNT</div>
                             </div>
                             <div class="col-7" style="font-size: 1.2em; font-weight: bold; display: flex; padding: 0;">
-                                <span style="margin: auto;">₹
+                                <span style="margin: auto;">€
                                     <span id="select-total-fare-media">
                                         {% if flights2 %}
                                             {% if seat == "Economy" %}

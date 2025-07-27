@@ -1,0 +1,104 @@
+{% extends "new/base.html" %}
+{% load static i18n %}
+
+{% block title %}Home - CT Travel{% endblock %}
+
+{% block content %}
+<div class="hero">
+	<div class="container">
+		<div class="row align-items-center">
+			<div class="col-lg-7">
+				<div class="intro-wrap">
+					<h1 class="mb-5"><span class="d-block">Let's Enjoy Your</span> Trip in <span class="typed-words"></span></h1>
+
+					<div class="row">
+						<div class="col-12">
+<!-- HTML -->
+<script src="https://code.jquery.com/jquery-3.4.1.js" integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU=" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js" integrity="sha256-T0Vest3yCU7pafRw9r+settMBX6JkKN06dqBnpQ8d30=" crossorigin="anonymous"></script>
+
+<script>
+    $(document).ready(function () {
+        $("#inputOrigin, #inputDestination").autocomplete({
+            source: function (request, response) {
+                $.ajax({
+                    url: "{% url 'origin_airport_search' %}",
+                    dataType: "json",
+                    data: {
+                        term: request.term
+                    },
+                    success: function (data) {
+                        response(data);
+                    }
+                });
+            },
+            minLength: 1,
+            delay: 200,
+            select: function(event, ui) {
+                var selectedIATA = ui.item.value.split(',')[0];
+                $(this).val(selectedIATA);
+                if (this.id === "inputOrigin") {
+                    $.ajax({
+                        url: "{% url 'get_currency_code' %}",
+                        dataType: "json",
+                        data: {
+                            iata_code: selectedIATA
+                        },
+                        success: function (data) {
+                            $("#currencyCode").text("Currency: " + data.currency_code);
+                        }
+                    });
+                }
+            }
+        });
+
+        $("#form_id").on("submit", function (e) {
+            e.preventDefault(); //stop submit event
+            var self = $(this);
+            var originGiven = $("#inputOrigin").val();
+            $("#inputOrigin").val(originGiven.slice(0, 3));
+            var destinationGiven = $("#inputDestination").val();
+            $("#inputDestination").val(destinationGiven.slice(0, 3));
+            $("#form_id").off("submit");
+            self.submit();
+        });
+    });
+</script>
+
+<form action="" method="POST" id="form_id">{% csrf_token %}
+	<div class="form-label-group">
+		<label for="inputOrigin" class="text-white mb-2 mt-5">{% trans "From" %}</label>
+		<input type="text" name="Origin" id="inputOrigin" class="form-control" placeholder="{% trans 'Search by City, Airport or IATA code' %}" required autofocus>
+	</div>
+	<div id="currencyCode" class="text-white"></div>
+	<div class="form-label-group">
+		<label for="inputDestination" class="text-white mb-2">{% trans "To" %}</label>
+		<input type="text" name="Destination" id="inputDestination" class="form-control" placeholder="{% trans 'Search by City, Airport or IATA code' %}" required autofocus>
+	</div>
+	<div class="form-label-group">
+		<label for="idDeparturedate" class="text-white">{% trans "Departure Date" %}</label>
+		<input type="date" name="Departuredate" id="idDeparturedate" class="form-control" placeholder="{% trans 'Departure Date' %}" required>
+	</div>
+	<div class="form-label-group">
+		<label for="idReturndate" class="text-white">{% trans "Return Date" %}</label>
+		<input type="date" name="Returndate" id="idReturndate" class="form-control" placeholder="{% trans 'Return Date' %}">
+	</div>
+	<hr>
+	<div class="justify-content: center;">
+		<button class="btn btn-secondary" type="submit" id="searchFlightButton">
+			<span class="btn-inner--icon"><i class="fas fa-search"></i></span>
+			<span class="btn-inner--text">{% trans "Search Flight" %}</span>
+		</button>
+	</div>
+</form>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- ...existing code... -->
+		</div>
+	</div>
+</div>
+<!-- ...existing code... -->
+{% endblock %}
+

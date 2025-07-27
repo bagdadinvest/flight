@@ -26,22 +26,23 @@ SECRET_KEY = '=k3z-^1ov_hy5y%ebw(2e-npk@$#!(c8ix=+7so*hmw9m0c52*'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'flight-web-app.herokuapp.com',
-]
+ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = ['https://cttravel.beyond-board.me']
+
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'baton',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'flight'
+    'flight',
+    'debug_toolbar',
 ]
 
 MIDDLEWARE = [
@@ -52,6 +53,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'capstone.middleware.CustomDebugToolbarMiddleware',  # Add this line
+    'capstone.middleware.SuperuserDebugMiddleware',
 ]
 
 ROOT_URLCONF = 'capstone.urls'
@@ -110,7 +113,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Asia/Calcutta'
+TIME_ZONE = 'Europe/Istanbul'
 
 USE_I18N = True
 
@@ -128,3 +131,9 @@ STATIC_ROOT = os.path.join(BASE_DIR,'staticfiles')
 
 
 AUTH_USER_MODEL = 'flight.User'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+INTERNAL_IPS = [
+    '127.0.0.1',
+]

@@ -89,9 +89,8 @@
 </head>
 <body>
     <nav>
-        <div class="col logo" style="width: 50%;">
-            <!--<img src="{% static 'img/icon_logo.png' %}" width="45%">-->
-            <span style="color: rgb(225, 35, 35); font-weight: bold; font-size: 2.5em;">FLIGHT</span>
+        <div class="col logo" style="width: 100%;">
+         <img src="https://cttravel.beyond-board.me/static/img/icon_logo.png" width="100">
         </div>
         <div class="col header" style="width: 50%;">
             <span style="margin: auto 0 auto auto;">E-Ticket</span>
@@ -230,24 +229,24 @@
             <table cellspacing='0' style="width: 100vw;">
                 <tr class="tr-odd">
                     <th style="width: 35%;">FARE</th>
-                    <td style="width: 65%;">INR {{ticket1.flight_fare}}</td>
+                    <td style="width: 65%;">EUR {{ticket1.flight_fare}}</td>
                 </tr>
                 <tr class="tr-even">
                     <th style="width: 35%;">CHARGES</th>
-                    <td style="width: 65%;">INR {{ticket1.other_charges}}</td>
+                    <td style="width: 65%;">EUR {{ticket1.other_charges}}</td>
                 </tr>
                 <tr class="tr-odd">
                     <th style="width: 35%;">DISCOUNT</th>
-                    <td style="width: 65%;">INR (-) {{ticket1.coupon_discount}}</td>
+                    <td style="width: 65%;">EUR (-) {{ticket1.coupon_discount}}</td>
                 </tr>
                 <tr class="tr-even">
                     <th style="width: 35%;">TOTAL</th>
-                    <td style="width: 65%;">INR {{ticket1.total_fare}}</td>
+                    <td style="width: 65%;">EUR {{ticket1.total_fare}}</td>
                 </tr>
             </table>
         </div>
     </main>
-    <p style="margin: 10px 0; font-size: .8em;">&#169;	 {{ current_year}} Flight Inc. All rights reserved.</p>
+    <p style="margin: 10px 0; font-size: .8em;">&#169;	 {{ current_year}} CT TRAVELS Inc. All rights reserved.</p>
     <!-- 30 Kgs Check-in, 7 Kgs Cabin-->
 </body>
 </html>

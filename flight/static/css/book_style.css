@@ -13,7 +13,7 @@
 }
 
 h5{
-    background: -webkit-linear-gradient(right, crimson, #b8017b);
+    background: -webkit-linear-gradient(right, #4173C1, #b8017b);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
