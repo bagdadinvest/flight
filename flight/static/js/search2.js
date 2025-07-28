@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
     tab_change();
     flight_select();
 
+    // Add responsive event listeners
+    setupResponsiveFeatures();
+
     //document.querySelector(".filter-price2 input[type=range]").addEventListener('input', filter); //filter_price
     if (document.querySelector('#trip-identifier').value === '2') {
         flight_duration2();
@@ -15,6 +18,68 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelector(".clr-filter-div2 button").addEventListener('click', reset_filter2);
     }
 });
+
+function setupResponsiveFeatures() {
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        // Close mobile filter if screen becomes desktop
+        if (window.innerWidth > 768) {
+            const filterDiv = document.querySelector('.filter-div.show');
+            if (filterDiv) {
+                filterDiv.classList.remove('show');
+            }
+            const overlay = document.querySelector('.mobile-filter-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+    });
+
+    // Add touch-friendly interactions for mobile
+    if (window.innerWidth <= 768) {
+        // Make flight cards more touch-friendly
+        document.querySelectorAll('.each-flight-div').forEach(card => {
+            card.style.minHeight = '44px'; // Minimum touch target size
+        });
+        
+        // Add swipe gesture for filters (optional enhancement)
+        setupSwipeGestures();
+    }
+}
+
+function setupSwipeGestures() {
+    let startX = 0;
+    let startY = 0;
+    
+    document.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    });
+    
+    document.addEventListener('touchend', (e) => {
+        if (!startX || !startY) return;
+        
+        let endX = e.changedTouches[0].clientX;
+        let endY = e.changedTouches[0].clientY;
+        
+        let diffX = startX - endX;
+        let diffY = startY - endY;
+        
+        // Only process horizontal swipes that are significant
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+            const filterDiv = document.querySelector('.filter-div.show');
+            
+            // Swipe left to close filter (for right-to-left languages or RTL layouts)
+            if (diffX > 0 && filterDiv) {
+                const closeBtn = filterDiv.querySelector('.close-filter button');
+                if (closeBtn) closeBtn.click();
+            }
+        }
+        
+        startX = 0;
+        startY = 0;
+    });
+}
 
 function flight_duration() {
     document.querySelectorAll(".flight-stops .tooltiptext").forEach(element => {
@@ -459,25 +524,66 @@ function initial_click() {
 
 
 function close_filter(element) {
-    element.parentElement.parentElement.style.display = 'none';
+    const filterDiv = element.parentElement.parentElement;
+    
+    // Check if we're on mobile (screen width <= 768px)
+    if (window.innerWidth <= 768) {
+        filterDiv.classList.remove('show');
+        // Remove overlay if it exists
+        const overlay = document.querySelector('.mobile-filter-overlay');
+        if (overlay) {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.remove(), 300);
+        }
+    } else {
+        filterDiv.style.display = 'none';
+    }
 }
 
-
 function show_filter() {
+    // Check if we're on mobile (screen width <= 768px)
+    if (window.innerWidth <= 768) {
+        // Create overlay for mobile
+        const overlay = document.createElement('div');
+        overlay.className = 'mobile-filter-overlay';
+        overlay.onclick = () => {
+            const filterDiv = document.querySelector('.filter-div.show');
+            if (filterDiv) {
+                filterDiv.classList.remove('show');
+            }
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        document.body.appendChild(overlay);
+        
+        // Show filter and overlay
+        setTimeout(() => {
+            overlay.classList.add('show');
+            const targetFilter = getActiveFilterDiv();
+            if (targetFilter) {
+                targetFilter.classList.add('show');
+            }
+        }, 10);
+    } else {
+        // Desktop behavior
+        const targetFilter = getActiveFilterDiv();
+        if (targetFilter) {
+            targetFilter.style.display = 'block';
+        }
+    }
+}
+
+function getActiveFilterDiv() {
     if(Boolean(document.querySelector(".query-result-div-2"))) {
         let r1 = document.querySelector(".query-result-div");
         let r2 = document.querySelector(".query-result-div-2");
         if(r2.style.display === 'none') {
-            r1.querySelector(".filter-div").style.display = 'block';
-            r2.querySelector(".filter-div").style.display = 'none';
+            return r1.querySelector(".filter-div");
+        } else {
+            return r2.querySelector(".filter-div");
         }
-        else {
-            r2.querySelector(".filter-div").style.display = 'block';
-            r1.querySelector(".filter-div").style.display = 'none';
-        }
-    }
-    else {
-        document.querySelector(".query-result-div .filter-div").style.display = 'block';
+    } else {
+        return document.querySelector(".query-result-div .filter-div");
     }
 }
 

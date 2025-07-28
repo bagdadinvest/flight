@@ -96,6 +96,9 @@
     padding-right: 12px;
 }
 .trip-modify button{
+    background: transparent;
+    border: 1px solid white;
+    border-radius: 4px;
 }
 .spl-btn{
     transition-duration: .2s;
@@ -522,61 +525,375 @@
     width: 100%;
 }
 
-@media (max-width: 376px){
-    .section1{
+/* Additional responsive utility classes */
+.mobile-filter-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+}
+
+.mobile-filter-overlay.show {
+    display: block;
+}
+
+.flight-time-responsive {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.flight-time-responsive .flight-origin-time,
+.flight-time-responsive .flight-destination-time {
+    flex: 1;
+    min-width: 80px;
+}
+
+.amadeus-badge {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    font-size: 0.65em;
+    padding: 3px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(40,167,69,0.3);
+}
+
+/* Responsive inline style overrides */
+.responsive-flex {
+    display: flex;
+}
+
+.responsive-space-between {
+    justify-content: space-between;
+}
+
+.responsive-border-separator {
+    border-top: 2px solid #e0e0e0;
+    margin: 20px 0;
+    padding-top: 20px;
+}
+
+.responsive-live-title {
+    color: #007bff;
+    margin-bottom: 15px;
+}
+
+/* Large tablets and small desktops */
+@media (max-width: 992px) {
+    .query-data-div > .container {
+        flex-wrap: wrap;
+        padding: 10px;
+    }
+    
+    .trip-places, .trip-time, .trip-class {
+        flex: 1 1 33%;
+        min-width: 200px;
+    }
+    
+    .each-flight-div {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .flight-company {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .flight-time {
+        width: 60%;
+    }
+    
+    .flight-details {
+        width: 35%;
+    }
+    
+    .responsive-border-separator {
+        margin: 15px 0;
+        padding-top: 15px;
+    }
+}
+
+/* Tablets */
+@media (max-width: 768px) {
+    .query-data-div > .container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .trip-places, .trip-time, .trip-class, .trip-modify {
+        width: 100%;
+        text-align: center;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        padding-bottom: 10px;
+    }
+    
+    .v-line {
+        display: none;
+    }
+    
+    .filter-div {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 300px;
+        height: 100vh;
+        z-index: 1000;
+        background: white;
+        transition: left 0.3s ease;
+        overflow-y: auto;
+    }
+    
+    .filter-div.show {
+        left: 0;
+    }
+    
+    .query-result-div .row {
+        margin: 0;
+    }
+    
+    .actual-result-div {
+        width: 100%;
+        padding: 5px;
+    }
+    
+    .each-flight-div {
+        flex-direction: column;
+        padding: 15px;
+    }
+    
+    .flight-company, .flight-time, .flight-details {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .query-data-div2 {
+        display: flex !important;
+    }
+    
+    .query-data-div {
+        display: none;
+    }
+    
+    .query-data-div2 .container {
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .trip-data {
+        flex: 1;
+        text-align: center;
+    }
+    
+    .trip-filter, .trip-modify {
+        width: auto;
+    }
+    
+    .responsive-flex {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .responsive-space-between {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .responsive-border-separator {
+        margin: 10px 0;
+        padding-top: 10px;
+    }
+}
+
+/* Mobile phones */
+@media (max-width: 576px) {
+    .section1 {
+        font-size: 0.9em;
+    }
+    
+    .query-result-div .container {
+        padding: 0;
+    }
+    
+    .each-flight-div {
+        margin: 5px;
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    .flight-company .company-details .company-name {
+        font-size: 0.9em;
+    }
+    
+    .flight-company .company-details .plane-name {
+        font-size: 0.8em;
+    }
+    
+    .flight-time .flight-time h5 {
+        font-size: 1.1em;
+    }
+    
+    .flight-place {
+        font-size: 0.7em;
+    }
+    
+    .flight-price h5 {
+        font-size: 1.2em;
+    }
+    
+    .flight-details-btn .btn {
+        padding: 8px 12px;
+        font-size: 0.85em;
+    }
+    
+    .filter {
+        padding: 10px;
+    }
+    
+    .square-box {
+        flex-direction: column;
+        padding: 8px 4px;
+        font-size: 0.7em;
+    }
+    
+    .square-box > div:last-child {
+        margin-top: 5px;
+        text-align: center;
+    }
+    
+    .price-range-output {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8em;
+    }
+    
+    .amadeus-badge {
+        font-size: 0.7em;
+        padding: 2px 6px;
+        margin-left: 8px;
+    }
+    
+    .query-trip-type-div .tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .query-trip-type-div .tabs a {
+        font-size: 0.85em;
+        padding: 8px 12px;
+    }
+    
+    .responsive-flex {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .responsive-space-between {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .responsive-live-title {
+        font-size: 1.1em;
+    }
+}
+
+/* Very small phones */
+@media (max-width: 376px) {
+    .section1 {
+        font-size: 0.8em;
+    }
+    
+    .query-result-div .container {
+        padding: 0;
+    }
+    
+    .each-flight-div {
+        margin: 2px;
+        padding: 8px;
+    }
+    
+    .flight-icon img, .flight-icon svg, .flight-icon div {
+        width: 30px !important;
+        height: 30px !important;
+    }
+    
+    .company-details {
+        margin-left: 8px;
+    }
+    
+    .flight-time .flight-time h5 {
         font-size: 1em;
     }
-    /*.query-data-div .container{
-        padding-right: 0;
-        padding-left: 0;
-        display: block;
-    }*/
-    .query-result-div .container{
-        padding-right: 0;
-        padding-left: 0;
+    
+    .flight-price h5 {
+        font-size: 1.1em;
     }
-    /*.query-data-div .white{
+    
+    .flight-details-btn .btn {
+        padding: 6px 10px;
+        font-size: 0.8em;
+    }
+    
+    .filter-box {
+        padding: 8px;
+    }
+    
+    .square-box {
+        padding: 6px 2px;
+        font-size: 0.65em;
+    }
+    
+    .filter-img-div img {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .white {
         font-size: medium;
     }
-    .trip-class, .trip-modify, .trip-time, .trip-places{
-        padding-left: 0;
-        padding-right: 0;
-        width: 100%;
-        margin-bottom: 7px!important;
+    
+    .small-label {
+        font-size: 0.6em;
     }
-    .trip-places > .from-div{
-        width: 45%;
-        text-align: center;
+    
+    .trip-data-p {
+        font-size: 0.9em;
     }
-    .trip-places > .to-div{
-        width: 45%;
-        text-align: center;
+    
+    .trip-data-d {
+        font-size: 0.7em !important;
     }
-    .trip-places > .trip-type-div{
-        width: 10%;
-        text-align: center;
+    
+    .responsive-flex {
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
     }
-    .query-data-div .trip-time{
-        justify-content: space-between;
-    }
-    .query-data-div .trip-time > div{
-        width: 40%;
-        text-align: center;
-    }
-    .trip-class{
-        display: flex;
+    
+    .responsive-space-between {
         justify-content: center;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .responsive-live-title {
+        font-size: 1em;
         text-align: center;
     }
-    .trip-modify{
-        display: flex;
-        justify-content: center;
+    
+    .responsive-border-separator {
+        margin: 8px 0;
+        padding-top: 8px;
     }
-    .trip-places{
-        margin-top: 7px!important;
-    }
-    .spl-btn{
-        padding: .3rem .65rem;
-    }*/
-    /*Next css in othet css file*/
 }
